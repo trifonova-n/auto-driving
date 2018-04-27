@@ -1,0 +1,6 @@
+road01_ins\ColorImage\Record011\Camera 5\170908_061502408_Camera_5.jpg	road01_ins\Label\Record011\Camera 5\170908_061502408_Camera_5_instanceIds.png
+road01_ins\ColorImage\Record011\Camera 5\170908_061502547_Camera_5.jpg	road01_ins\Label\Record011\Camera 5\170908_061502547_Camera_5_instanceIds.png
+road01_ins\ColorImage\Record011\Camera 5\170908_061502686_Camera_5.jpg	road01_ins\Label\Record011\Camera 5\170908_061502686_Camera_5_instanceIds.png
+road01_ins\ColorImage\Record011\Camera 5\170908_061502825_Camera_5.jpg	road01_ins\Label\Record011\Camera 5\170908_061502825_Camera_5_instanceIds.png
+
+

@@ -1,0 +1,4 @@
+road01_ins\ColorImage\Record014\Camera 5\170908_061955478_Camera_5.jpg	road01_ins\Label\Record014\Camera 5\170908_061955478_Camera_5_instanceIds.png
+road01_ins\ColorImage\Record014\Camera 5\170908_061955628_Camera_5.jpg	road01_ins\Label\Record014\Camera 5\170908_061955628_Camera_5_instanceIds.png
+road01_ins\ColorImage\Record014\Camera 5\170908_061955778_Camera_5.jpg	road01_ins\Label\Record014\Camera 5\170908_061955778_Camera_5_instanceIds.png
+
