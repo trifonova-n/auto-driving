@@ -1,11 +1,12 @@
 import pytest
 from load_data import Data
+import numpy as np
 
 
 def test_train_data():
     data_path = 'test_data'
     data = Data(data_path, mode='train')
-    assert len(data) == 2
+    assert len(data) == 3
     assert len(data.videos[0]) == 4
     assert len(data.video_masks[0]) == 4
     assert data.videos[0][0] == '170908_061502408_Camera_5.jpg'
@@ -31,6 +32,24 @@ def test_train_data():
             assert mask.shape == (2710, 3384)
             img_count += 1
         assert img_count == len(data.videos[video_id])
+
+
+def test_train_data_files():
+    data_path = 'test_data'
+    names = ['road01_cam_5_video_2_image_list_train']
+    data = Data(data_path, mode='train', video_names=names)
+    assert len(data) == 1
+    assert len(data.videos) == 1
+    assert len(data.videos[0]) == 4
+    assert len(data.video_masks[0]) == 4
+
+
+def test_train_test_split():
+    data_path = 'test_data'
+    data = Data(data_path, mode='train')
+    random_state = np.random.RandomState(seed=1)
+    data_train, data_test = data.train_test_split(test_size=1, random_state=random_state)
+    assert len(data) == len(data_train) + len(data_test)
 
 
 def test_test_data():

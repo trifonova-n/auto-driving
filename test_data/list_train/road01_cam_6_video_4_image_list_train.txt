@@ -1,0 +1,2 @@
+road01_ins\ColorImage\Record014\Camera 6\170908_061956378_Camera_6.jpg	road01_ins\Label\Record014\Camera 6\170908_061956378_Camera_6_instanceIds.png
+
