@@ -1,0 +1,3 @@
+[submodule "mask-rcnn"]
+	path = mask-rcnn
+	url = git@github.com:GeeshangXu/mask-rcnn-pytorch.git
