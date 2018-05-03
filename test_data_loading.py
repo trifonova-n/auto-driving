@@ -21,15 +21,17 @@ def test_train_data():
     assert data.video_masks[1][0] == '170908_061955478_Camera_5_instanceIds.png'
     assert data.video_masks[1][2] == '170908_061955778_Camera_5_instanceIds.png'
 
-    img, mask = data.get_frame(0, 0)
-    assert img.shape == (2710, 3384, 3)
-    assert mask.shape == (2710, 3384)
+    sample = data.get_frame(0, 0)
+    assert 'image' in sample
+    assert 'mask' in sample
+    assert sample['image'].shape == (2710, 3384, 3)
+    assert sample['mask'].shape == (2710, 3384)
 
     for video_id in range(len(data)):
         img_count = 0
-        for img, mask in data.video_iter(video_id):
-            assert img.shape == (2710, 3384, 3)
-            assert mask.shape == (2710, 3384)
+        for sample in data.video_iter(video_id):
+            assert sample['image'].shape == (2710, 3384, 3)
+            assert sample['mask'].shape == (2710, 3384)
             img_count += 1
         assert img_count == len(data.videos[video_id])
 
@@ -64,12 +66,13 @@ def test_test_data():
     assert data.videos[1][0] == 'd5f147ba4d1c8056c7b4525520b1682f.jpg'
     assert data.videos[1][2] == 'fd14c90019ff78722643c89ca2528814.jpg'
 
-    img, = data.get_frame(0, 0)
-    assert img.shape == (2710, 3384, 3)
+    sample = data.get_frame(0, 0)
+    assert sample['image'].shape == (2710, 3384, 3)
 
     for video_id in range(len(data)):
         img_count = 0
-        for img, in data.video_iter(video_id):
+        for sample in data.video_iter(video_id):
+            img = sample['image']
             assert img.shape == (2710, 3384, 3)
             img_count += 1
         assert img_count == len(data.videos[video_id])
