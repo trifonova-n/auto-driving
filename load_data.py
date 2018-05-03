@@ -74,6 +74,7 @@ class Data(object):
     def get_frame(self, video_id, frame_id):
         sample = {}
         frame = imread(str(self.video_dir / self.videos[video_id][frame_id]))
+        frame = frame.astype(np.float32) / 255.
         sample['image'] = frame
         if self.mode == 'train':
             mask = imread(str(self.mask_dir / self.video_masks[video_id][frame_id]))

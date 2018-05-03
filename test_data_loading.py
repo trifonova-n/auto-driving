@@ -1,6 +1,9 @@
 import pytest
 from load_data import Data
 import numpy as np
+from dataset import FrameDataset
+from transformation import FrameTransform
+import torch
 
 
 def test_train_data():
@@ -76,3 +79,47 @@ def test_test_data():
             assert img.shape == (2710, 3384, 3)
             img_count += 1
         assert img_count == len(data.videos[video_id])
+
+
+def test_transform():
+    size = (400, 512)
+    transform = FrameTransform(size=size)
+    dtypes = [np.int8, np.int32, np.float32, np.float64]
+    for dtype in dtypes:
+        sample = {}
+        sample['image'] = np.ones((2710, 3384, 3), dtype=dtype)
+        sample['mask'] = np.ones((10, 2710, 3384), dtype=dtype)
+        newsample = transform.transform(sample)
+        assert sample != newsample
+        assert sample['image'] != newsample['image']
+        assert sample['mask'] != newsample['mask']
+        assert newsample['image'].shape == (size[0], size[1], 3)
+        assert newsample['mask'].shape == (sample['mask'].shape[0], size[0], size[1])
+        assert newsample['image'].dtype == dtype
+        assert newsample['mask'].dtype == dtype
+        assert newsample['image'].max() == 1.0
+        assert newsample['mask'].max() == 1.0
+
+
+def test_dataset():
+    data_path = 'test_data'
+    data = Data(data_path, mode='train')
+    size = (400, 512)
+    sizes = [(2710, 3384), size]
+    scale = FrameTransform(size=size)
+    transforms = [None, scale.transform]
+    for transform, expected_size in zip(transforms, sizes):
+        dataset = FrameDataset(data, transform=transform)
+        sample = dataset[0]
+        assert 'image' in sample
+        assert 'mask' in sample
+        assert 'bboxes' in sample
+        assert 'classes' in sample
+        assert sample['image'].type() == torch.FloatTensor(0).type()
+        assert sample['mask'].type() == torch.FloatTensor(0).type()
+        assert sample['bboxes'].type() == torch.FloatTensor(0).type()
+        assert sample['classes'].type() == torch.LongTensor(0).type()
+        assert sample['image'].shape[0] == 3
+        assert sample['image'].shape[1:] == expected_size
+        assert sample['mask'].shape[1] == 1
+        assert sample['mask'].shape[2:] == expected_size

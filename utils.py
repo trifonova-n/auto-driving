@@ -6,7 +6,7 @@ def extract_bboxes(mask):
     mask: [height, width, num_instances]. Mask pixels are either 1 or 0.
     Returns: bbox array [num_instances, (y1, x1, y2, x2)].
     """
-    boxes = np.zeros([mask.shape[0], 4], dtype=np.int32)
+    boxes = np.zeros([mask.shape[0], 4], dtype=np.float32)
     for i in range(mask.shape[0]):
         m = mask[i, :, :]
 
@@ -23,8 +23,8 @@ def extract_bboxes(mask):
             # No mask for this instance. Might happen due to
             # resizing or cropping. Set bbox to zeros
             x1, x2, y1, y2 = 0, 0, 0, 0
-        boxes[i] = np.array([x1, y1, x2, y2])
-    return boxes.astype(np.int32)
+        boxes[i] = np.array([x1, y1, x2, y2], dtype=np.float32)
+    return boxes
 
 
 def extract_bynary_masks(mask, class_map=None):
@@ -32,8 +32,8 @@ def extract_bynary_masks(mask, class_map=None):
     if class_map:
         vals = [a for a in vals if a // 1000 in class_map]
     object_count = len(vals) - 1
-    masks = np.zeros((object_count, mask.shape[0], mask.shape[1]), dtype=np.uint8)
-    classes = np.zeros(object_count, np.int32)
+    masks = np.zeros((object_count, mask.shape[0], mask.shape[1]), dtype=np.float32)
+    classes = np.zeros(object_count, np.int64)
     for i, val in enumerate(vals[1:]):
         masks[i, :, :] = (mask == val)
         if class_map:
