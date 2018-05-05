@@ -22,7 +22,6 @@ class Data(object):
             else:
                 self.load_train_filenames(self.data_dir / 'list_train')
         elif mode == 'test':
-            list_dir = self.data_dir / 'list_test'
             self.video_dir = self.data_dir / 'test'
             self.mask_dir = ''
             self.load_test_filenames(self.data_dir / 'list_test_mapping')

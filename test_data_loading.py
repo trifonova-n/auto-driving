@@ -3,6 +3,7 @@ from load_data import Data
 import numpy as np
 from dataset import FrameDataset
 from transformation import FrameTransform
+from torch.utils.data import DataLoader
 import torch
 
 
@@ -111,6 +112,7 @@ def test_dataset():
     for transform, expected_size in zip(transforms, sizes):
         dataset = FrameDataset(data, transform=transform)
         sample = dataset[0]
+        assert len(dataset) == 8
         assert 'image' in sample
         assert 'mask' in sample
         assert 'bboxes' in sample
@@ -123,3 +125,37 @@ def test_dataset():
         assert sample['image'].shape[1:] == expected_size
         assert sample['mask'].shape[1] == 1
         assert sample['mask'].shape[2:] == expected_size
+
+
+def test_full_dataset():
+    data_path = 'data'
+    size = (400, 512)
+    scale = FrameTransform(size=size)
+    data = Data(data_path, mode='train')
+    dataset = FrameDataset(data, transform=scale.transform)
+    assert len(dataset) == len(dataset.ids)
+    assert data.image_count == len(dataset.ids)
+    for i in range(len(dataset)):
+        sample = dataset[i]
+        assert sample is not None
+        assert sample['image'].shape[0] == 3
+        assert sample['image'].shape[1:] == size
+        print(sample['mask'].shape)
+        assert sample['mask'].shape[1] == 1
+        assert sample['mask'].shape[2:] == size
+
+
+def test_full_dataloader():
+    data_path = 'data'
+    size = (400, 512)
+    batch_size = 2
+    return 0
+    scale = FrameTransform(size=size)
+    data = Data(data_path, mode='train')
+    dataset = FrameDataset(data, transform=scale.transform)
+    loader = DataLoader(dataset, batch_size=batch_size)
+    for batch in loader:
+        assert batch is not None
+        assert batch['image'].shape[0] == batch_size
+        assert batch['image'].shape[1] == 1
+        assert batch['image'].shape[2:] == size
