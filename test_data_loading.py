@@ -132,7 +132,8 @@ def test_full_dataset():
     size = (400, 512)
     scale = FrameTransform(size=size)
     data = Data(data_path, mode='train')
-    dataset = FrameDataset(data, transform=scale.transform)
+    max_object_count = 40
+    dataset = FrameDataset(data, transform=scale.transform, max_object_count=max_object_count)
     assert len(dataset) == len(dataset.ids)
     assert data.image_count == len(dataset.ids)
     for i in range(len(dataset)):
@@ -140,22 +141,30 @@ def test_full_dataset():
         assert sample is not None
         assert sample['image'].shape[0] == 3
         assert sample['image'].shape[1:] == size
-        print(sample['mask'].shape)
+        assert sample['mask'].shape[0] == max_object_count
         assert sample['mask'].shape[1] == 1
         assert sample['mask'].shape[2:] == size
+        assert sample['classes'].shape[0] == max_object_count
+        assert sample['bboxes'].shape[0] == max_object_count
+        assert sample['bboxes'].shape[1] == 4
 
 
 def test_full_dataloader():
     data_path = 'data'
     size = (400, 512)
     batch_size = 2
-    return 0
     scale = FrameTransform(size=size)
+    max_object_count = 40
     data = Data(data_path, mode='train')
-    dataset = FrameDataset(data, transform=scale.transform)
+    dataset = FrameDataset(data, transform=scale.transform, max_object_count=max_object_count)
     loader = DataLoader(dataset, batch_size=batch_size)
     for batch in loader:
         assert batch is not None
         assert batch['image'].shape[0] == batch_size
-        assert batch['image'].shape[1] == 1
+        assert batch['image'].shape[1] == 3
         assert batch['image'].shape[2:] == size
+        assert batch['mask'].shape[1] == max_object_count
+        assert batch['mask'].shape[2] == 1
+        assert batch['mask'].shape[3:] == size
+        assert batch['bboxes'].shape[1] == max_object_count
+        assert batch['classes'].shape[1] == max_object_count

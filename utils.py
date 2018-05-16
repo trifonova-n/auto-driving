@@ -27,14 +27,16 @@ def extract_bboxes(mask):
     return boxes
 
 
-def extract_bynary_masks(mask, class_map=None):
+def extract_bynary_masks(mask, class_map=None, max_object_count=40):
     vals = np.unique(mask)
     if class_map:
         vals = [a for a in vals if a // 1000 in class_map]
     object_count = len(vals) - 1
-    masks = np.zeros((object_count, mask.shape[0], mask.shape[1]), dtype=np.float32)
-    classes = np.zeros(object_count, np.int64)
-    for i, val in enumerate(vals[1:]):
+    if object_count > max_object_count:
+        print(object_count)
+    masks = np.zeros((max_object_count, mask.shape[0], mask.shape[1]), dtype=np.float32)
+    classes = np.zeros(max_object_count, np.int64)
+    for i, val in enumerate(vals[1:min(len(vals), max_object_count)]):
         masks[i, :, :] = (mask == val)
         if class_map:
             classes[i] = class_map[val // 1000]

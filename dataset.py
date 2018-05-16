@@ -5,10 +5,11 @@ import numpy as np
 
 
 class FrameDataset(Dataset):
-    def __init__(self, data, transform=None):
+    def __init__(self, data, transform=None, max_object_count=20):
         self.data = data
         self.transform = transform
         self.ids = []
+        self.max_object_count = max_object_count
         for video_id in range(len(self.data.videos)):
             for frame_id in range(len(self.data.videos[video_id])):
                 self.ids.append((video_id, frame_id))
@@ -19,7 +20,11 @@ class FrameDataset(Dataset):
     def __getitem__(self, idx):
         sample = self.data.get_frame(*self.ids[idx])
         if 'mask' in sample:
-            masks, classes = extract_bynary_masks(sample['mask'], self.data.class_map)
+            masks, classes = extract_bynary_masks(sample['mask'],
+                                                  self.data.class_map,
+                                                  max_object_count=self.max_object_count)
+            if len(classes) == 0:
+                return None
             sample['mask'] = masks
             if self.transform:
                 sample = self.transform(sample)
