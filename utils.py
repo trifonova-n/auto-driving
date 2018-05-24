@@ -101,3 +101,10 @@ def image_score(predictions, targets):
 def score(prediction_masks, prediciton_classes, target_masks, target_classes):
 
     pass
+
+def cumm_mask(masks):
+    if not masks:
+        return np.zeros((masks.shape[1], masks.shape[2]), dtype=np.int64)
+    mask = np.tensordot(list(range(1, len(masks) + 1)), masks, axes=1)
+    return mask
+
