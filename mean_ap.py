@@ -51,54 +51,117 @@ def compute_iou(predictions, targets, scores):
     return iou, idx_2_plabel, idx_2_tlabel
 
 
-def image_avrg_prec(predictions, targets, scores):
-    predictions = predictions.astype(np.int32)
-    targets = targets.astype(np.int32)
-    iou_thresholds = np.linspace(0.5, 0.95, 10)
+class Eval(object):
+    def __init__(self, params=None):
+        if params is None:
+            params = Params()
+        self.params = params
+        self.eval_res = []
+        self.precision = None
 
-    iou, idx_2_plabel, idx_2_tlabel = compute_iou(predictions, targets, scores)
+    def evaluate_img_cat(self, detect_img, gt_img, scores):
+        detect_img = detect_img.astype(np.int32)
+        gt_img = gt_img.astype(np.int32)
+        iou_thresholds = self.params['iouThrs']
 
-    match_indices = cumargmax(iou)
-    scores = np.sort(scores)[::-1]
-    score_vals, indices = np.unique(scores)
-    score_vals = score_vals.append(1.0)
-    indices = indices.append(-1)
+        ious, idx_2_dlabel, idx_2_glabel = compute_iou(detect_img, gt_img, scores)
 
-    for i, score_thresh in zip(indices, score_vals):
-        matches = match_indices[i, :]
-        matche_ious = iou[i, matches]
-        matches_per_iou_thresh = matche_ious
+        scores = np.sort(scores)[::-1]
 
+        T = len(iou_thresholds)
+        G = len(idx_2_glabel)
+        D = len(idx_2_dlabel)
 
+        gtm = np.zeros((T, G))
+        dtm = np.zeros((T, D))
+        for tind, t in enumerate(iou_thresholds):
+            for dind in range(D):
+                iou = t
+                m = -1
+                for gind in range(G):
+                    if gtm[tind, gind] > 0 or ious[dind, gind] < iou:
+                        continue
+                    m = gind
+                    iou = ious[dind, gind]
+                gtm[tind, m] = 1
+                dtm[tind, dind] = 1
+        return dtm, scores, G
 
+    def evaluate_img(self, detect_masks, gt_img, scores, dt_cats):
+        matches = []
+        for cat in self.params.catIds:
+            gt_cat_img = gt_img & (gt_img // 1000 == cat)
+            dt_cat_masks = detect_masks[dt_cats == cat]
+            dtm, scores, gtN = self.evaluate_img_cat(dt_cat_masks, gt_cat_img, scores[dt_cats == cat])
+            matches.append({'dtMatches': dtm, 'dtScores': scores, 'gtN': gtN})
+        self.eval_res.append(matches)
+        self.precision = None
 
-    TPs = np.zeros_like(thresholds)
-    t_nomatch = {}
-    p_nomatch = {}
-    for tl in target_labels:
-        for pl in predict_labels:
-            ul = pl*1000 + tl
-            intersetion_area = in_dict.get(ul, 0)
-            union_area = t_dict[tl] + p_dict[pl] - intersetion_area
-            iou = float(intersetion_area) / union_area
-            matches = (iou > thresholds)
-            TPs += matches
-            t_nomatch[tl] = np.invert(matches) & t_nomatch.get(tl, np.ones_like(thresholds, dtype=bool))
-            p_nomatch[pl] = np.invert(matches) & p_nomatch.get(pl, np.ones_like(thresholds, dtype=bool))
+    def accumulate(self):
+        p = self.params
+        T = len(p.iouThrs)
+        R = len(p.recThrs)
+        K = len(p.catIds)
+        maxDet = self.params.maxDet
+        precision = -np.ones((T, R, K))  # -1 for the precision of absent categories
+        recall = -np.ones((T, K))
+        for k in range(K):
+            E = [e[k] for e in self.eval_res]
+            E = [e for e in E if not e is None]
+            if len(E) == 0:
+                continue
 
-    FPs = np.sum(list(p_nomatch.values()), axis=0)
-    FNs = np.sum(list(t_nomatch.values()), axis=0)
-    if len(predict_labels) == 0:
-        FNs = len(target_labels)
-    #print('predict_labels', len(predict_labels))
-    #print('target_labels', len(target_labels))
-    #print('TPs', TPs)
-    #print('FPs', FPs)
-    #print('FNs', FNs)
-    scores = TPs/(TPs + FPs + FNs)
-    return np.mean(scores)
+            dtScores = np.concatenate([e['dtScores'] for e in E])
+            inds = np.argsort(-dtScores, kind='mergesort')
+            dtScoresSorted = dtScores[inds]
+            dtm = np.concatenate([e['dtMatches'] for e in E], axis=1)[:, inds]
+            gtN = np.sum(e['gtN'] for e in E)
 
+            tps = dtm
+            fps = np.logical_not(dtm)
 
-def score(prediction_masks, prediciton_classes, target_masks, target_classes):
+            tp_sum = np.cumsum(tps, axis=1).astype(dtype=np.float)
+            fp_sum = np.cumsum(fps, axis=1).astype(dtype=np.float)
 
-    pass
+            for t, (tp, fp) in enumerate(zip(tp_sum, fp_sum)):
+                rc = tp / gtN
+                pr = tp / (tp + fp + np.spacing(1))
+                q = np.zeros((R,))
+
+                # numpy is slow without cython optimization for accessing elements
+                # use python array gets significant speed improvement
+                pr = pr.tolist()
+                q = q.tolist()
+
+                for i in range(len(tp) - 1, 0, -1):
+                    if pr[i] > pr[i - 1]:
+                        pr[i - 1] = pr[i]
+
+                inds = np.searchsorted(rc, p.recThrs, side='left')
+
+                try:
+                    for ri, pi in enumerate(inds):
+                        q[ri] = pr[pi]
+                except:
+                    pass
+                precision[t, :, k] = np.array(q)
+        self.precision = precision
+
+    def mean_avrg_precision(self, iouThr=None):
+        if self.precision is None:
+            self.accumulate()
+        s = self.precision
+        if iouThr is not None:
+            t = np.where(iouThr == self.params.iouThrs)[0]
+            s = self.precision[t]
+        if len(s[s > -1]) == 0:
+            return -1
+
+        return np.mean(s[s > -1])
+
+class Params(object):
+    def __init__(self):
+        self.iouThrs = np.linspace(0.5, 0.95, 10)
+        self.recThrs = np.linspace(.0, 1.00, np.round((1.00 - .0) / .1) + 1, endpoint=True)
+        self.catIds = []
+        self.maxDet = 100
