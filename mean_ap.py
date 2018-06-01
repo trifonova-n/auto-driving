@@ -1,54 +1,5 @@
 import numpy as np
-
-
-def cumargmax(a):
-    m = np.maximum.accumulate(a)
-    x = np.repeat(np.arange(a.shape[0])[:, None], a.shape[1], axis=1)
-    x[1:] *= m[:-1] < m[1:]
-    np.maximum.accumulate(x, axis=0, out=x)
-    return x
-
-
-def compute_iou(predictions, targets, scores):
-    """
-    Computes iou matrix
-    :param predictions: prediction label image with N object labels from 1
-    :param targets: target label image with object labels from 1 to 999
-    :param scores: N prediction scores produced by model
-    :return: iou, idx_2_plabel, idx_2_tlabel
-    """
-    target_labels, t_counts = np.unique(targets, return_counts=True)
-    target_labels, t_counts = target_labels[:-1], t_counts[:-1]
-    predict_labels, p_counts = np.unique(predictions, return_counts=True)
-    predict_labels, p_counts = predict_labels[:-1], p_counts[:-1]
-
-    p_number = len(predict_labels)
-    t_number = len(target_labels)
-    # compute intersections of all predictions with all targets
-    un_mask = predictions * 1000 + targets
-
-    in_labels, counts = np.unique(un_mask, return_counts=True)
-    in_labels = [(l // 1000, l % 1000) for l in in_labels]
-
-    idx_2_plabel = [l for _, l in sorted(zip(scores, predict_labels), reverse=True)]
-    plabel_2_idx = dict(zip(idx_2_plabel, range(p_number)))
-    idx_2_tlabel = target_labels
-    tlabel_2_idx = dict(zip(idx_2_tlabel, range(t_number)))
-
-    intersections = np.zeros((p_number, t_number))
-    in_idcs = [(plabel_2_idx[p], tlabel_2_idx[t]) for p, t in in_labels]
-    intersections[zip(*in_idcs)] = counts
-
-    # areas of targets
-    t_dict = dict(zip(target_labels, t_counts))
-    # areas of predictions
-    p_dict = dict(zip(predict_labels, p_counts))
-
-    p_counts = [p_dict[idx_2_plabel[i]] for i in range(p_number)]
-    t_counts = [t_dict[idx_2_tlabel[i]] for i in range(t_number)]
-    unions = ((-intersections + t_counts).T + p_counts).T
-    iou = intersections / unions
-    return iou, idx_2_plabel, idx_2_tlabel
+from mask import compute_iou
 
 
 class Eval(object):
@@ -59,18 +10,17 @@ class Eval(object):
         self.eval_res = []
         self.precision = None
 
-    def evaluate_img_cat(self, detect_img, gt_img, scores):
-        detect_img = detect_img.astype(np.int32)
-        gt_img = gt_img.astype(np.int32)
+    def evaluate_img_cat(self, dt_masks, gt_masks, scores):
         iou_thresholds = self.params['iouThrs']
 
-        ious, idx_2_dlabel, idx_2_glabel = compute_iou(detect_img, gt_img, scores)
-
-        scores = np.sort(scores)[::-1]
+        idx = np.argsort(scores)[::-1]
+        scores = scores[idx]
+        dt_masks = dt_masks[idx]
+        ious = compute_iou(dt_masks, gt_masks)
 
         T = len(iou_thresholds)
-        G = len(idx_2_glabel)
-        D = len(idx_2_dlabel)
+        G = len(gt_masks.shape[0])
+        D = len(dt_masks.shape[0])
 
         gtm = np.zeros((T, G))
         dtm = np.zeros((T, D))
@@ -87,12 +37,12 @@ class Eval(object):
                 dtm[tind, dind] = 1
         return dtm, scores, G
 
-    def evaluate_img(self, detect_masks, gt_img, scores, dt_cats):
+    def evaluate_img(self, detect_masks, gt_masks, dt_cats, gt_cats, dt_scores):
         matches = []
         for cat in self.params.catIds:
-            gt_cat_img = gt_img & (gt_img // 1000 == cat)
+            gt_cat_masks = gt_masks[gt_cats == cat]
             dt_cat_masks = detect_masks[dt_cats == cat]
-            dtm, scores, gtN = self.evaluate_img_cat(dt_cat_masks, gt_cat_img, scores[dt_cats == cat])
+            dtm, scores, gtN = self.evaluate_img_cat(dt_cat_masks, gt_cat_masks, dt_scores[dt_cats == cat])
             matches.append({'dtMatches': dtm, 'dtScores': scores, 'gtN': gtN})
         self.eval_res.append(matches)
         self.precision = None
@@ -159,9 +109,11 @@ class Eval(object):
 
         return np.mean(s[s > -1])
 
+
 class Params(object):
     def __init__(self):
         self.iouThrs = np.linspace(0.5, 0.95, 10)
         self.recThrs = np.linspace(.0, 1.00, np.round((1.00 - .0) / .1) + 1, endpoint=True)
         self.catIds = []
+        self.crowdCats = []
         self.maxDet = 100
