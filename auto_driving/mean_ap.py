@@ -1,5 +1,5 @@
 import numpy as np
-from mask import compute_iou
+from auto_driving.mask import compute_iou
 
 
 class Eval(object):

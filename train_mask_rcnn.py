@@ -1,18 +1,14 @@
 import numpy as np
-from skimage.io import imread
-import matplotlib.pyplot as plt
-from matplotlib import animation
-from IPython.display import HTML
 import os
 import sys
 import torch
 from torch.utils.data import DataLoader
 from torchvision.transforms import ToPILImage
 tensor2pil = ToPILImage()
-from load_data import Data
-from dataset import FrameDataset
-from transformation import FrameTransform
-from visualize import visualize_video
+from auto_driving.load_data import Data
+from auto_driving.dataset import FrameDataset
+from auto_driving.transformation import FrameTransform
+
 sys.path.append('mask-rcnn')
 from maskrcnn import MaskRCNN
 
@@ -47,7 +43,6 @@ val_dataloader = DataLoader(val_dataset, batch_size=BATCH_SIZE, num_workers=NUM_
 # define train, val, test function
 # ==================================
 
-from torch.autograd import Variable
 from tqdm import tqdm
 import time
 

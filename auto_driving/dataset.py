@@ -1,6 +1,6 @@
 from torch.utils.data import Dataset
 import torch
-from utils import extract_bboxes, extract_bynary_masks
+from auto_driving.utils import extract_bboxes, extract_bynary_masks
 import numpy as np
 
 

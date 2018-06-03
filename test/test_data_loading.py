@@ -1,8 +1,7 @@
-import pytest
-from load_data import Data
+from auto_driving.load_data import Data
 import numpy as np
-from dataset import FrameDataset
-from transformation import FrameTransform
+from auto_driving.dataset import FrameDataset
+from auto_driving.transformation import FrameTransform
 from torch.utils.data import DataLoader
 import torch
 
@@ -83,7 +82,7 @@ def test_test_data():
 
 
 def test_transform():
-    from config import Config
+    from auto_driving.config import Config
     config = Config()
     config.size = (400, 512)
     transform = FrameTransform(config)
@@ -107,14 +106,14 @@ def test_transform():
 def test_dataset():
     data_path = 'test_data'
     data = Data(data_path, mode='train')
-    from config import Config
+    from auto_driving.config import Config
     config = Config()
     config.size = (400, 512)
     sizes = [(2710, 3384), config.size]
     scale = FrameTransform(config)
     transforms = [None, scale.transform]
     for transform, expected_size in zip(transforms, sizes):
-        dataset = FrameDataset(data, transform=transform)
+        dataset = FrameDataset(data, config, transform=transform)
         sample = dataset[0]
         assert len(dataset) == 8
         assert 'image' in sample
@@ -133,13 +132,13 @@ def test_dataset():
 
 def test_full_dataset():
     data_path = 'data'
-    from config import Config
+    from auto_driving.config import Config
     config = Config()
     config.size = (400, 512)
     scale = FrameTransform(config)
     data = Data(data_path, mode='train')
     max_object_count = 40
-    dataset = FrameDataset(data, transform=scale.transform, max_object_count=max_object_count)
+    dataset = FrameDataset(data, config, transform=scale.transform, max_object_count=max_object_count)
     assert len(dataset) == len(dataset.ids)
     assert data.image_count == len(dataset.ids)
     for i in range(len(dataset)):
@@ -157,22 +156,22 @@ def test_full_dataset():
 
 def test_full_dataloader():
     data_path = 'data'
-    from config import Config
+    from auto_driving.config import Config
     config = Config()
     config.size = (400, 512)
     batch_size = 2
     scale = FrameTransform(config)
     max_object_count = 40
     data = Data(data_path, mode='train')
-    dataset = FrameDataset(data, transform=scale.transform, max_object_count=max_object_count)
+    dataset = FrameDataset(data, config, transform=scale.transform, max_object_count=max_object_count)
     loader = DataLoader(dataset, batch_size=batch_size)
     for batch in loader:
         assert batch is not None
         assert batch['image'].shape[0] == batch_size
         assert batch['image'].shape[1] == 3
-        assert batch['image'].shape[2:] == size
+        assert batch['image'].shape[2:] == config.size
         assert batch['mask'].shape[1] == max_object_count
         assert batch['mask'].shape[2] == 1
-        assert batch['mask'].shape[3:] == size
+        assert batch['mask'].shape[3:] == config.size
         assert batch['bboxes'].shape[1] == max_object_count
         assert batch['classes'].shape[1] == max_object_count

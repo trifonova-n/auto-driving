@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-import mask
+from auto_driving import mask
 
 
 class Submission(object):
