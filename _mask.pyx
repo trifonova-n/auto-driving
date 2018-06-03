@@ -6,7 +6,9 @@ ctypedef np.uint8_t uint8
 
 @cython.boundscheck(False)
 @cython.cdivision(True)
-def compute_iou(np.ndarray[uint8, cast=True, ndim=3] dt_masks, np.ndarray[uint8, cast=True, ndim=3] gt_masks, np.ndarray[uint8, cast=True, ndim=1] gt_crowd=None):
+def compute_iou(np.ndarray[uint8, cast=True, ndim=3] dt_masks,
+                np.ndarray[uint8, cast=True, ndim=3] gt_masks,
+                np.ndarray[uint8, cast=True, ndim=1] gt_crowd=None):
     cdef int D = dt_masks.shape[0]
     cdef int G = gt_masks.shape[0]
     cdef int H = dt_masks.shape[1]

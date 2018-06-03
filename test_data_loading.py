@@ -83,8 +83,10 @@ def test_test_data():
 
 
 def test_transform():
-    size = (400, 512)
-    transform = FrameTransform(size=size)
+    from config import Config
+    config = Config()
+    config.size = (400, 512)
+    transform = FrameTransform(config)
     dtypes = [np.int8, np.int32, np.float32, np.float64]
     for dtype in dtypes:
         sample = {}
@@ -94,8 +96,8 @@ def test_transform():
         assert sample != newsample
         assert sample['image'] != newsample['image']
         assert sample['mask'] != newsample['mask']
-        assert newsample['image'].shape == (size[0], size[1], 3)
-        assert newsample['mask'].shape == (sample['mask'].shape[0], size[0], size[1])
+        assert newsample['image'].shape == (config.size[0], config.size[1], 3)
+        assert newsample['mask'].shape == (sample['mask'].shape[0], config.size[0], config.size[1])
         assert newsample['image'].dtype == dtype
         assert newsample['mask'].dtype == dtype
         assert newsample['image'].max() == 1.0
@@ -105,9 +107,11 @@ def test_transform():
 def test_dataset():
     data_path = 'test_data'
     data = Data(data_path, mode='train')
-    size = (400, 512)
-    sizes = [(2710, 3384), size]
-    scale = FrameTransform(size=size)
+    from config import Config
+    config = Config()
+    config.size = (400, 512)
+    sizes = [(2710, 3384), config.size]
+    scale = FrameTransform(config)
     transforms = [None, scale.transform]
     for transform, expected_size in zip(transforms, sizes):
         dataset = FrameDataset(data, transform=transform)
@@ -129,8 +133,10 @@ def test_dataset():
 
 def test_full_dataset():
     data_path = 'data'
-    size = (400, 512)
-    scale = FrameTransform(size=size)
+    from config import Config
+    config = Config()
+    config.size = (400, 512)
+    scale = FrameTransform(config)
     data = Data(data_path, mode='train')
     max_object_count = 40
     dataset = FrameDataset(data, transform=scale.transform, max_object_count=max_object_count)
@@ -140,10 +146,10 @@ def test_full_dataset():
         sample = dataset[i]
         assert sample is not None
         assert sample['image'].shape[0] == 3
-        assert sample['image'].shape[1:] == size
+        assert sample['image'].shape[1:] == config.size
         assert sample['mask'].shape[0] == max_object_count
         assert sample['mask'].shape[1] == 1
-        assert sample['mask'].shape[2:] == size
+        assert sample['mask'].shape[2:] == config.size
         assert sample['classes'].shape[0] == max_object_count
         assert sample['bboxes'].shape[0] == max_object_count
         assert sample['bboxes'].shape[1] == 4
@@ -151,9 +157,11 @@ def test_full_dataset():
 
 def test_full_dataloader():
     data_path = 'data'
-    size = (400, 512)
+    from config import Config
+    config = Config()
+    config.size = (400, 512)
     batch_size = 2
-    scale = FrameTransform(size=size)
+    scale = FrameTransform(config)
     max_object_count = 40
     data = Data(data_path, mode='train')
     dataset = FrameDataset(data, transform=scale.transform, max_object_count=max_object_count)

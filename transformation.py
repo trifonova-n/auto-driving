@@ -3,8 +3,8 @@ from skimage.transform import resize
 
 
 class FrameTransform(object):
-    def __init__(self, size=(400, 512)):
-        self.size = size
+    def __init__(self, config):
+        self.config = config
         pass
 
     def resize(self, image, size):
@@ -18,12 +18,12 @@ class FrameTransform(object):
         img_width = sample['image'].shape[1]
         sample['img_height'] = img_height
         sample['img_width'] = img_width
-        img = self.resize(sample['image'], self.size)
+        img = self.resize(sample['image'], self.config.size)
         sample['image'] = img
         if 'mask' in sample:
-            masks = np.zeros((sample['mask'].shape[0], self.size[0], self.size[1]), dtype=sample['mask'].dtype)
+            masks = np.zeros((sample['mask'].shape[0], self.config.size[0], self.config.size[1]), dtype=sample['mask'].dtype)
             for i, mask in enumerate(sample['mask']):
-                masks[i, :, :] = self.resize(mask, self.size)
+                masks[i, :, :] = self.resize(mask, self.config.size)
             sample['mask'] = masks
         return sample
 
@@ -36,11 +36,11 @@ class FrameTransform(object):
         if 'mask' in sample:
             masks = np.zeros((sample['mask'].shape[0], img_height, img_width), dtype=sample['mask'].dtype)
             for i, mask in enumerate(sample['mask']):
-                masks[i, :, :] = self.resize(mask, self.size)
+                masks[i, :, :] = self.resize(mask, self.config.size)
             sample['mask'] = masks
         if 'probs' in sample:
             probs = np.zeros((sample['probs'].shape[0], img_height, img_width), dtype=sample['probs'].dtype)
             for i, prob in enumerate(sample['probs']):
-                probs[i, :, :] = self.resize(prob, self.size)
+                probs[i, :, :] = self.resize(prob, self.config.size)
             sample['probs'] = probs
         return sample

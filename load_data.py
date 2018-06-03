@@ -28,9 +28,6 @@ class Data(object):
         else:
             raise RuntimeError('Unexpected mode ' + mode)
 
-        self.class_map = {0: 0, 33: 1, 34: 2, 35: 3, 36: 4, 38: 5, 39: 6, 40: 7, 255: 0}
-        self.class_names = ['background', 'car', 'motorcycle', 'bicycle', 'pedestrian', 'truck', 'bus', 'tricycle']
-
     def load_train_filenames(self, list_dir):
         if isinstance(list_dir, (list, tuple)):
             list_files = sorted([self.data_dir / 'list_train' / (p + '.txt') for p in list_dir])
@@ -74,6 +71,7 @@ class Data(object):
         sample = {}
         frame = imread(str(self.video_dir / self.videos[video_id][frame_id]))
         frame = frame.astype(np.float32) / 255.
+        sample['ImageId'] = self.videos[video_id][frame_id].split('.')[0]
         sample['image'] = frame
         if self.mode == 'train':
             mask = imread(str(self.mask_dir / self.video_masks[video_id][frame_id]))
@@ -112,9 +110,6 @@ class Data(object):
         test_names = [self.video_id2name[i] for i in test_ids]
         return Data(self.data_dir, self.mode, train_names), Data(self.data_dir, self.mode, test_names)
 
-    @property
-    def num_classes(self):
-        return len(self.class_names)
 
     def __len__(self):
         return len(self.videos)

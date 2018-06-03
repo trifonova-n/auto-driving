@@ -1,4 +1,26 @@
 import numpy as np
+import pandas as pd
+import mask
+
+
+class Submission(object):
+    def __init__(self, config):
+        self.config = config
+        columns = ['ImageId', 'LabelId', 'Confidence', 'PixelCount', 'EncodedPixels']
+        self.df = pd.DataFrame(columns=columns)
+
+    def add_img(self, ImageId, dt_masks, dt_classes, dt_scores):
+        rdict = {'ImageId': ImageId}
+        for x, cl, sc in zip(dt_masks, dt_classes, dt_scores):
+            rdict['LabelId'] = self.config.catIds[cl]
+            rdict['Confidence'] = sc
+            pixel_count, rle = rle_encoding(x)
+            rdict['PixelCount'] = pixel_count
+            rdict['EncodedPixels'] = rle
+        self.df.append(rdict)
+
+    def save(self, filename):
+        self.df.to_csv(filename, index=False)
 
 
 def rle_encoding(x):
@@ -7,15 +29,9 @@ def rle_encoding(x):
     Modified by Konstantin, https://www.kaggle.com/lopuhin
     """
     assert x.dtype == np.bool
-    dots = np.where(x.flatten() == 1)[0]
-    run_lengths = []
-    prev = -2
-    for b in dots:
-        if b > prev + 1:
-            run_lengths.append([b, 0])
-        run_lengths[-1][1] += 1
-        prev = b
-    return '|'.join('{} {}'.format(*pair) for pair in run_lengths)
+    run_lengths = mask.rle_encoding(x)
+    pixel_count = sum([p[1] for p in run_lengths])
+    return pixel_count, '|'.join('{} {}'.format(*pair) for pair in run_lengths)
 
 
 def segs_to_rle_rows(lab_img, **kwargs):
