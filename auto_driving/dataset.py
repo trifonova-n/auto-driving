@@ -1,7 +1,7 @@
 from torch.utils.data import Dataset
 import torch
-from auto_driving.utils import extract_bboxes, extract_bynary_masks
 import numpy as np
+from .utils import extract_bboxes, extract_binary_masks
 
 
 class FrameDataset(Dataset):
@@ -21,8 +21,7 @@ class FrameDataset(Dataset):
     def __getitem__(self, idx):
         sample = self.data.get_frame(*self.ids[idx])
         if 'mask' in sample:
-            masks, classes = extract_bynary_masks(sample['mask'],
-                                                  self.config.catId_map,
+            masks, classes = extract_binary_masks(sample['mask'], self.config.catId_map,
                                                   max_object_count=self.config.max_object_count)
             if len(classes) == 0:
                 return None

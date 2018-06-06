@@ -1,17 +1,18 @@
 import numpy as np
-from auto_driving.mask import compute_iou
+from .mask import compute_iou
 
 
 class Eval(object):
-    def __init__(self, params=None):
+    def __init__(self, config, params=None):
         if params is None:
             params = Params()
+            params.catIds = config.catIds
         self.params = params
         self.eval_res = []
         self.precision = None
 
     def evaluate_img_cat(self, dt_masks, gt_masks, scores):
-        iou_thresholds = self.params['iouThrs']
+        iou_thresholds = self.params.iouThrs
 
         idx = np.argsort(scores)[::-1]
         scores = scores[idx]
@@ -19,8 +20,8 @@ class Eval(object):
         ious = compute_iou(dt_masks, gt_masks)
 
         T = len(iou_thresholds)
-        G = len(gt_masks.shape[0])
-        D = len(dt_masks.shape[0])
+        G = gt_masks.shape[0]
+        D = dt_masks.shape[0]
 
         gtm = np.zeros((T, G))
         dtm = np.zeros((T, D))
@@ -33,15 +34,16 @@ class Eval(object):
                         continue
                     m = gind
                     iou = ious[dind, gind]
-                gtm[tind, m] = 1
-                dtm[tind, dind] = 1
+                if m >= 0:
+                    gtm[tind, m] = 1
+                    dtm[tind, dind] = 1
         return dtm, scores, G
 
-    def evaluate_img(self, detect_masks, gt_masks, dt_cats, gt_cats, dt_scores):
+    def evaluate_img(self, dt_masks, gt_masks, dt_cats, gt_cats, dt_scores):
         matches = []
-        for cat in self.params.catIds:
+        for cat in range(1, len(self.params.catIds)):
             gt_cat_masks = gt_masks[gt_cats == cat]
-            dt_cat_masks = detect_masks[dt_cats == cat]
+            dt_cat_masks = dt_masks[dt_cats == cat]
             dtm, scores, gtN = self.evaluate_img_cat(dt_cat_masks, gt_cat_masks, dt_scores[dt_cats == cat])
             matches.append({'dtMatches': dtm, 'dtScores': scores, 'gtN': gtN})
         self.eval_res.append(matches)
@@ -51,19 +53,18 @@ class Eval(object):
         p = self.params
         T = len(p.iouThrs)
         R = len(p.recThrs)
-        K = len(p.catIds)
-        maxDet = self.params.maxDet
+        K = len(p.catIds) - 1  # exclude background
         precision = -np.ones((T, R, K))  # -1 for the precision of absent categories
         recall = -np.ones((T, K))
         for k in range(K):
             E = [e[k] for e in self.eval_res]
             E = [e for e in E if not e is None]
+            print(len(E), E)
             if len(E) == 0:
                 continue
 
             dtScores = np.concatenate([e['dtScores'] for e in E])
             inds = np.argsort(-dtScores, kind='mergesort')
-            dtScoresSorted = dtScores[inds]
             dtm = np.concatenate([e['dtMatches'] for e in E], axis=1)[:, inds]
             gtN = np.sum(e['gtN'] for e in E)
 

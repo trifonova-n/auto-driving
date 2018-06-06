@@ -1,5 +1,4 @@
 
-
 class Config(object):
     def __init__(self):
         self.catIds = [0, 33, 34, 35, 36, 38, 39, 40]

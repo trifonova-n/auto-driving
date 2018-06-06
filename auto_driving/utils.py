@@ -27,7 +27,7 @@ def extract_bboxes(mask):
     return boxes
 
 
-def extract_bynary_masks(mask, class_map=None, max_object_count=80):
+def extract_binary_masks(mask, class_map=None, max_object_count=80):
     vals = np.unique(mask)
     if class_map:
         vals = [a for a in vals if a // 1000 in class_map]
