@@ -80,18 +80,17 @@ def test_extract_binary_masks():
 
 
 def test_iou(masks1, masks2):
-    config = Config()
     dt_masks, dt_cats = masks1
     gt_masks, gt_cats = masks2
+    dt_masks = dt_masks[dt_cats == 2]
+    gt_masks = gt_masks[gt_cats == 2]
     ious = compute_iou(dt_masks, gt_masks)
-    #print(ious)
-    scores = np.array([0.8, 0.6, 0.5] + [0.0] * (len(dt_cats) - 3))
-    evaluator = Eval(config)
-    evaluator.params.catIds = [0, 1, 2, 3]
-    evaluator.evaluate_img(dt_masks=dt_masks, gt_masks=gt_masks, dt_cats=dt_cats, gt_cats=gt_cats, dt_scores=scores)
-    print(evaluator.eval_res)
-    assert 1 == 2
-    pass
+    ious_expected = np.array([
+        [2/3, 0.0, 0.0],
+        [0.0, 5/6, 1/6],
+        [0.0, 0.0, 0.0]
+    ])
+    assert np.allclose(ious, ious_expected)
 
 
 def test_evaluate_img_cat(masks1, masks2):
@@ -109,13 +108,54 @@ def test_evaluate_img_cat(masks1, masks2):
     assert G_1 == 1
 
     dtm_2, scores_2, G_2 = evaluator.evaluate_img_cat(dt_masks[dt_cats == 2], gt_masks[gt_cats == 2], scores[dt_cats == 2])
-    print(dtm_2)
-    print(G_2)
+    assert G_2 == 3
+    assert dtm_2[3, 0] == 1
+    assert dtm_2[4, 0] == 0
+    assert dtm_2[6, 1] == 1
+    assert dtm_2[7, 1] == 0
+    assert dtm_2[0, 2] == 0
 
     dtm_3, scores_3, G_3 = evaluator.evaluate_img_cat(dt_masks[dt_cats == 3], gt_masks[gt_cats == 3],
                                                       scores[dt_cats == 3])
-    print(dtm_3)
-    print(G_3)
+    assert G_3 == 0
+
+
+def test_overlap_det():
+    gt_masks = np.array([
+        [
+            [0, 0, 0],
+            [0, 1, 1],
+            [0, 1, 1]
+        ]
+    ], dtype=np.bool)
+    dt_masks = np.array([
+        [
+            [0, 0, 0],
+            [0, 1, 1],
+            [0, 1, 1]
+        ],
+        [
+            [0, 0, 0],
+            [0, 0, 1],
+            [0, 1, 1]
+        ],
+        [
+            [0, 0, 0],
+            [0, 1, 0],
+            [0, 0, 1]
+        ]
+    ], dtype=np.bool)
+    scores = np.array([0.6, 0.7, 0.8])
+    config = Config()
+    evaluator = Eval(config)
+    dtm, scores, G = evaluator.evaluate_img_cat(dt_masks=dt_masks, gt_masks=gt_masks, scores=scores)
+    thrs = evaluator.params.iouThrs
+    assert np.allclose(dtm[:, 0][thrs <= 0.5], 1)
+    assert np.allclose(dtm[:, 1:][thrs <= 0.5], 0)
+    assert np.allclose(dtm[:, 0][thrs > 0.5], 0)
+    assert np.allclose(dtm[:, 1][np.logical_and(thrs > 0.5, thrs <= 3/4)], 1)
+    assert np.allclose(dtm[:, 2][np.logical_and(thrs > 0.5, thrs <= 3/4)], 0)
+    assert np.allclose(dtm[:, 2][thrs > 3/4], 1)
 
 
 def test_evaluate_img(masks1, masks2):
@@ -127,19 +167,32 @@ def test_evaluate_img(masks1, masks2):
     evaluator.params.catIds = [0, 1, 2, 3]
 
     evaluator.evaluate_img(dt_masks, gt_masks, dt_cats, gt_cats, scores)
-    print(evaluator.eval_res)
-    pass
+    assert len(evaluator.eval_res) == 1
+    assert len(evaluator.eval_res[0]) == len(evaluator.params.catIds) - 1
+    assert evaluator.eval_res[0][-1] is None
 
 
-def test_mean_avrg_precision(masks1, masks2):
+def test_accumulate():
     config = Config()
-    dt_masks, dt_cats = masks1
-    gt_masks, gt_cats = masks2
-    scores = np.array([0.8, 0.7, 0.6, 0.5, 0.4] + [0.0] * (len(dt_cats) - 5))
+    scores = np.array([0.9, 0.8, 0.7, 0.6, 0.5, 0.4])
     evaluator = Eval(config)
-    evaluator.params.catIds = [0, 1, 2, 3]
-
-    evaluator.evaluate_img(dt_masks, gt_masks, dt_cats, gt_cats, scores)
+    evaluator.params.catIds = [0, 1, 2]
+    evaluator.params.iouThrs = [0.5, 0.75, 0.95]
+    matches = []
+    dtm = np.array([
+        [1, 1, 0, 1, 0, 0],
+        [0, 1, 0, 1, 0, 0],
+        [0, 1, 0, 0, 0, 0],
+    ], dtype=np.float64)
+    gtN = 4
+    matches.append({'dtMatches': dtm, 'dtScores': scores, 'gtN': gtN})
+    matches.append(None)
+    evaluator.eval_res.append(matches)
     evaluator.accumulate()
-    print(evaluator.precision[0])
-    print(evaluator.mean_avrg_precision())
+    pr = np.array([
+        [1.0,  1.0,  1.0,  1.0,  1.0,  1.0,  0.75, 0.75, 0.0,  0.0,  0.0],
+        [0.5,  0.5,  0.5,  0.5,  0.5,  0.5,  0.0,  0.0,  0.0,  0.0,  0.0],
+        [0.5,  0.5,  0.5,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0,  0.0],
+    ])
+    pr = np.stack([pr, -np.ones_like(pr)], axis=2)
+    assert np.allclose(pr, evaluator.precision)

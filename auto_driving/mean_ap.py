@@ -45,7 +45,10 @@ class Eval(object):
             gt_cat_masks = gt_masks[gt_cats == cat]
             dt_cat_masks = dt_masks[dt_cats == cat]
             dtm, scores, gtN = self.evaluate_img_cat(dt_cat_masks, gt_cat_masks, dt_scores[dt_cats == cat])
-            matches.append({'dtMatches': dtm, 'dtScores': scores, 'gtN': gtN})
+            if gtN == 0:
+                matches.append(None)
+            else:
+                matches.append({'dtMatches': dtm, 'dtScores': scores, 'gtN': gtN})
         self.eval_res.append(matches)
         self.precision = None
 
@@ -55,11 +58,9 @@ class Eval(object):
         R = len(p.recThrs)
         K = len(p.catIds) - 1  # exclude background
         precision = -np.ones((T, R, K))  # -1 for the precision of absent categories
-        recall = -np.ones((T, K))
         for k in range(K):
             E = [e[k] for e in self.eval_res]
             E = [e for e in E if not e is None]
-            print(len(E), E)
             if len(E) == 0:
                 continue
 
